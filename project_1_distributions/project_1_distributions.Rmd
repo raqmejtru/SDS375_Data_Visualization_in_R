@@ -13,7 +13,7 @@ library(ggridges)
 library(knitr)
 knitr::opts_chunk$set(
   echo = TRUE,
-  fig.path = "./figures/README-"
+  fig.path = "./figures/"
   )
 ```
 
