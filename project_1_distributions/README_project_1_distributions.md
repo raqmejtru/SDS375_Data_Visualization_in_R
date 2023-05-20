@@ -193,7 +193,7 @@ ggplot(olympics_alpine) +
     )
 ```
 
-<img src="project_1_distributions_violin_ridgeline_files/figure-gfm/Q1_violin-1.png" style="display: block; margin: auto;" />
+<img src="./figures/README-Q1_violin-1.png" style="display: block; margin: auto;" />
 
 ## Q2
 
@@ -233,7 +233,7 @@ ggplot(olympics_alpine) +
     )
 ```
 
-<img src="project_1_distributions_violin_ridgeline_files/figure-gfm/Q2_ridgeline-1.png" style="display: block; margin: auto;" />
+<img src="./figures/README-Q2_ridgeline-1.png" style="display: block; margin: auto;" />
 
 ## Q3
 
@@ -291,7 +291,7 @@ ggplot() +
     )
 ```
 
-<img src="project_1_distributions_violin_ridgeline_files/figure-gfm/Q3_ridgeline-1.png" style="display: block; margin: auto;" />
+<img src="./figures/README-Q3_ridgeline-1.png" style="display: block; margin: auto;" />
 
 # **Discussion**
 
