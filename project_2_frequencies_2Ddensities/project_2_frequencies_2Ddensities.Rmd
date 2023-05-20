@@ -1,0 +1,179 @@
+---
+title: 'Project 2: Exploring Himalayan Climbing Expeditions'
+author: 'Table of Contents'
+output:
+  github_document:
+    toc: true
+    toc_depth: 1
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggridges)
+library(RColorBrewer)
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.path = "./figures/"
+  )
+```
+
+# **Introduction**
+
+This analysis is based on the `members` data set, which contains information about climbing expeditions in the Himalayas from 1905 up to Spring 2019. Each row in the data set represents a person that climbed a unique expedition. Information about the five relevant variables (columns) used in this analysis is provided as follows:
+
+1.  `expedition_id` is a unique identifier for a particular expedition.
+2.  `season` describes whether the expedition took place in Autumn, Spring, Summer, or Winter.
+3.  `success` describes whether a person accomplished the goal of their particular expedition.
+4.  `age` describes a person's age (could be at the age of summit, death, or base camp arrival depending on data availability).
+5.  `highpoint_metres` describes a person's highpoint elevation in meters.
+
+# **Questions**
+
+1.  ***How do the likelihoods of successfully completing an expedition change throughout the year?***
+2.  ***How does age affect a person's ability to reach high elevations?***
+
+# **Data preparation**
+
+```{r message = FALSE}
+members = readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-22/members.csv')
+```
+
+More information about the dataset can be found on this [Himalayan database](https://www.himalayandatabase.com/) and on the Tidy Tuesday [repository](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-09-22/readme.md).
+
+# **Approach**
+
+### Q1
+
+To determine the likelihood of successfully completing an expedition at various points throughout the year, I calculate the proportion of expeditions that are successful across each season of the year. This is accomplished by finding all distinct `expedition_id`'s and calculating the proportion of successful expeditions grouped by season. A limitation of this method is that some individuals in an expedition may not have been successful, whereas the rest of their group may have been. For simplicity, this analysis assumes that most individuals in an expedition have the same `success` outcome.
+
+Although proportions can be displayed numerically, frequency framing can allow readers to understand frequencies visually through discrete probability outcomes. As such, this method was chosen to display how the likelihoods of successfully completing an expedition change across seasons.
+
+### Q2
+
+A 2-D density plot was chosen to visualize the relationship between a person's age and their highpoint elevation. This visualization was chosen to avoid an overcrowded scatterplot, due to the high density of records present in the `members` data set.
+
+```{r, results='asis', eval=(opts_knit$get('rmarkdown.pandoc.to') == 'latex'), echo = FALSE}
+cat('\\pagebreak')
+```
+
+# **Analysis**
+
+### Q1
+
+```{r, Q1_frequency_framing, fig.align = "center", fig.height = 4, fig.width = 7, message=FALSE}
+# Determine proportion of successful expeditions based on season
+pr_success_df = members %>%
+  filter(season != 'Unknown') %>%
+  distinct(expedition_id, .keep_all = T) %>%
+  group_by(season) %>%
+  summarise(pr_success = mean(success, na.rm = T), season) %>%
+  distinct(pr_success) %>% 
+  arrange(pr_success)
+
+# Save probabilities as vector
+pr_success_ls = pr_success_df$pr_success
+
+# This function is used to create a df representing a sampling grid with overall
+# probabilities defined by `pr_success_ls`
+# written by Kris Sankaran:
+# https://krisrs1128.github.io/stat679_notes/2022/06/02/week13-1.html
+sample_grid = function(p = 0.5) {
+  expand.grid(seq_len(25), seq_len(25)) %>%
+  mutate(response = sample(0:1, n(), replace = TRUE, prob = c(1 - p, p)))
+}
+
+# Lines 64-66 also written by Kris Sankaran :
+# https://krisrs1128.github.io/stat679_notes/2022/06/02/week13-1.html
+success_grid = map(pr_success_ls, ~ sample_grid(.)) %>%
+  bind_rows(.id = "p") %>%
+  mutate(pr_success_ls = pr_success_ls[as.integer(p)]) 
+
+# Loop creates labels that will be used in frequency framing plot
+for (i in 1:4) {
+  # Label: {season} (XX.X%)
+  pct_label = paste0(
+    pr_success_df$season[i], 
+    ' (', 
+    round(pr_success_df$pr_success[i]*100, 1), 
+    '%)'
+    )
+  success_grid$pr_success_ls = gsub(
+    pr_success_df$pr_success[i], 
+    pct_label, 
+    success_grid$pr_success_ls
+    )
+}
+
+# Plot frequency framing grid
+success_grid %>%
+  ggplot() +
+  geom_tile(
+    aes(Var1, Var2, fill = as.factor(response)), 
+    col = "white", 
+    linewidth = 0.5
+    ) +
+  facet_grid(~pr_success_ls) +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0, 0)) +
+  coord_fixed() +
+  labs(
+    fill = '', 
+    col = '', 
+    title = 'Proportion of Successful Expeditions Across Seasons'
+    ) +
+  scale_fill_manual(
+    values = c("light grey", "black"),
+    labels = c('Unsuccessful', 'Successful')
+    ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+```{r, results='asis', eval=(opts_knit$get('rmarkdown.pandoc.to') == 'latex'), echo = FALSE}
+cat('\\pagebreak')
+```
+
+### Q2
+
+```{r, Q2_2D_density, fig.align = "center", fig.height = 4.5, fig.width = 5, message=FALSE, warning=FALSE}
+members %>%
+  select(age, highpoint_metres) %>%
+  ggplot(aes(age, highpoint_metres)) +
+  geom_density_2d_filled(alpha = 0.8) +
+  labs(
+    x = 'Age (years)', 
+    y = 'Elevation highpoint (m)', 
+    title = 'Effect of Age on a Climber\'s Elevation Highpoint'
+    ) +
+  scale_fill_manual(
+    values = colorRampPalette(brewer.pal(9, 'Blues'))(14)
+    ) +
+  scale_x_continuous(limits = c(15, 65)) +
+  scale_y_continuous(limits = c(5000, 9000)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = 'none'
+    )
+```
+
+```{r, results='asis', eval=(opts_knit$get('rmarkdown.pandoc.to') == 'latex'), echo = FALSE}
+cat('\\pagebreak')
+```
+
+# **Discussion**
+
+***How do the likelihoods of successfully completing an expedition change throughout the year?***
+
+Climbers with aspirations of visiting the Himalayas may be interested in the likelihood of their climbing expedition being successful in a particular season, especially considering the frigid conditions that ensue in winter. The first figure supports that there is slight variation in the proportion of expeditions that are successful throughout the year. Newcomers may be more inclined to attempt a climb in Spring or Autumn, given seasonal success rates of \~35%, as opposed to the lower success rates of Summer and Winter.
+
+***How does age affect a person's ability to reach high elevations?***
+
+There does not appear to be a strong linear correlation between a person's age and their elevation highpoint based on the second figure. However, it is clear that regardless of age, the most common elevation highpoints occur at \~7000 m, \~8000 m, and \~9000 m. Additionally, it appears that most climbers' ages fall in the range 25-45, irrespective of how high they climbed.
